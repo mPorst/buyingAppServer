@@ -48,6 +48,10 @@ function handleMessage($msg, $client, $pdo)
 	{
 		//do things
 	}
+	else if($msg === "get summary\n")
+	{
+		//do things
+	}
 }
 
 ?>

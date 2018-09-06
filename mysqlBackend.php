@@ -25,7 +25,7 @@ function pdoDbSetup($account, $host, $password, $db) {
 	$tables = array("purchases", "consumers", "employees", "summary");
 	$tableParameters = array("purchases" => "(buyers VARCHAR(255), dates DATE, prices DECIMAL(6,2), receivers VARCHAR(255))",
 				"consumers" => "(consumers VARCHAR(255), date DATE, hasEaten BIT(1))",
-				"employees" => "(employees VARCHAR(255), active VARCHAR(255), debts DECIMAL(6,2))",
+				"employees" => "(employees VARCHAR(255), active VARCHAR(255), balance DECIMAL(6,2))",
 				"summary" => "(months TINYINT, years YEAR, cost DECIMAL(6,2), costPerMeal DECIMAL(6,2))"
 				);
 
