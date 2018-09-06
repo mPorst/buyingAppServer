@@ -14,20 +14,27 @@ function handleMessage($msg, $client, $pdo)
 	
 	if($msg === "send purchase\n")
 	{
-		$pdo->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING );
+		$pdo->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		echo "The message was recognised as \"send purchase\"\n";
 		sendMessage($client, "ack");
-		$cost = receiveMessage($client);
 		$buyer = receiveMessage($client);	
 		$date = receiveMessage($client);
+		$cost = receiveMessage($client);
 		$receiver = receiveMessage($client);
-		echo "$buyer, $cost, $date, $receiver \n";
 		removeNewLine($buyer); removeNewLine($cost); removeNewLine($date); removeNewLine($receiver);
-		$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
-		$sth = $pdo->prepare($sql);
-		print_r($pdo->errorInfo());
-		$sth->execute([$buyer, $date, $cost, $receiver]);
-		echo "$buyer \n $cost \n $date \n $receiver \n";
+		try
+		{
+			$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
+			$sth = $pdo->prepare($sql);
+			print_r($pdo->errorInfo());
+			$sth->execute([$buyer, $date, $cost, $receiver]);
+			sendMessage($client, "$buyer has paid $cost");
+		}
+		catch(PDOException $except)
+		{
+			$except->getMessage;
+			sendMessage($client, "ERROR: $except");
+		}
 	}
 	else if($msg === "remove purchase\n")
 	{
