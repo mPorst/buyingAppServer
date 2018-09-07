@@ -23,10 +23,10 @@ function removeNewline(&$inputString ) {
 function pdoDbSetup($account, $host, $password, $db) {
 	/* Required Variables */
 	$tables = array("purchases", "consumers", "employees", "summary");
-	$tableParameters = array("purchases" => "(buyers VARCHAR(255), dates DATE, prices DECIMAL(6,2), receivers VARCHAR(255))",
-				"consumers" => "(consumers VARCHAR(255), date DATE, hasEaten BIT(1))",
+	$tableParameters = array("purchases" => "(buyers VARCHAR(255), dates DATE, prices DECIMAL(6,2) UNSIGNED, receivers VARCHAR(255))",
+				"consumers" => "(consumers VARCHAR(255), date DATE, hasEaten VARCHAR(255))",
 				"employees" => "(employees VARCHAR(255), active VARCHAR(255), balance DECIMAL(6,2))",
-				"summary" => "(months TINYINT, years YEAR, cost DECIMAL(6,2), costPerMeal DECIMAL(6,2))"
+				"summary" => "(months TINYINT, years YEAR, cost DECIMAL(8,4), costPerMeal DECIMAL(8,4))"
 				);
 
 	/* Set Up the PDO Connection to the Database */
@@ -85,7 +85,7 @@ function updateEmployees($pdo, $employees, $active, $debts) {
 				$sql = "INSERT INTO employees VALUES(?,?,?)";
 				//$sql = "INSERT INTO employees VALUES('thisWorks',1,19)";
 				$sth = $pdo->prepare($sql);
-				echo "values: name:".$employees[$i]." - active:".$active[$i]." - debts:".$debts[$i]."\n";
+				echo "values: name:".$employees[$i]." - active:".$active[$i]." - balance:".$debts[$i]."\n";
 				$sth->execute([$employees[$i], $active[$i], $debts[$i]]);
 				//$sth->execute(["lulzForTheLalz", 1, 19]);
 			}
