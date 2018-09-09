@@ -7,119 +7,143 @@
 #include_once "socketHandling.php"
 #include_once "mysqlBackend.php"
 
+//functions to outsource:
+//checkEmployeeExists($employee, $pdo)
+//check
 function handleMessage($msg, $client, $pdo)
 {
+	$today = date('Y-m-d');
 	$msgTypes = array("send purchase", "remove purchase", "send consumer", "remove consumer");
-	echo "in handleMessage \n";
 	
 	if($msg === "send purchase\n")
 	{
-		$pdo->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		echo "The message was recognised as \"send purchase\"\n";
 		sendMessage($client, "ack");
 		$buyer = receiveMessage($client);	
 		$date = receiveMessage($client);
 		$cost = receiveMessage($client);
 		$receiver = receiveMessage($client);
-		echo "after first exception handling DEBUG \n";
 		removeNewLine($buyer); removeNewLine($cost); removeNewLine($date); removeNewLine($receiver);
+
+		/* Verify the sent date */
+		if($date != $today)
+		{
+			sendMessage($client, "It is only allowed to send transactions from the current day");
+		}
+
 		/* Check If Buyer Exists */
-		try
+		if(!checkEmployeeExists($buyer,$pdo))
 		{
-			$sql = "SELECT * FROM employees WHERE employees = ?";
-			$personInfoSql = $pdo->prepare($sql);
-			$personInfoSql->execute([$buyer]);
-			if(!($personInfoSql->rowCount()>0))
-			{
-				sendMessage($client, "Could not find name \"$buyer\" in employees.");
-				return;
-			}
-			
-		} 
-		catch(PDOException $except)
-		{
-			sendMessage($client, "ERROR: $except");
+			sendMessage($client, "Could not find name \"$buyer\" in employees.");
 			return;
 		}
 
-		/* Check Amount of Request Already Sent By Buyer Today */
-		$sql = "SELECT COUNT(prices) as count FROM purchases WHERE dates = ?";
-		$today = date('Y-m-d');
-		$countRequestsSql = $pdo->prepare($sql);
-		$countRequestsSql->execute([$today]);
-		$countRequests = $countRequestsSql->fetch();
-		// force $countRequest to int
-		$countRequests = $countRequests['count'];
-		//$countRequests=$countRequests+1-1;
-		echo $countRequests." is the number of requests done today, the $today \n";
-		if($countRequests >= 7)
+		/* Check Amount of Request Already Sent (Overall / By Buyer) Today */
+		$maxTransactionsOverall = 6;
+		$maxTransactionsBySingleUser = 3;
+		if(!checkOverallAmountRequests($maxTransactionsOverall, $pdo))
 		{
-			sendMessage($client, "ERROR: Only 7 purchases/transactions allowed per day");
+			sendMessage($client, "There are only $maxTransactionsOverall transactions allowed per day. Please try again tomorrow");
+			return;
+		}
+		if(!checkAmountRequestsByUser($buyer, $maxTransactionsBySingleUser, $pdo))
+		{
+			sendMessage($client, "You have already issued your $maxTransactionsBySingleUser allowed transactions per day");
 			return;
 		}
 
-		//$sql = "SELECT COUNT(prices) FROM purchases WHERE buyer = ? AND date = ?";
-		/* Check Receiver Field */
+		/* Check Receiver Field to choose proper method to cal */
 		if($receiver == "none")
 		{
-			try
+			$inserted = insertPurchase($buyer, $date, $cost, $pdo);
+			// $inserted can either be "true" or contains the error message
+			if($inserted === true)
 			{
-				$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
-				$insertSql = $pdo->prepare($sql);
-				print_r($pdo->errorInfo());
-				$insertSql->execute([$buyer, $date, $cost, $receiver]);
-				sendMessage($client, "$buyer has paid $cost");
+				sendMessage($client, "$buyer has paid $cost. inserted: $inserted");
 			}
-			catch(PDOException $except)
+			else
 			{
-				$except->getMessage;
-				sendMessage($client, "ERROR: $except");
+				sendMessage($client, $inserted);
+				return;
 			}
 		}
 		else
 		{
-			/* Check If Receiver Exists */
-			try
+			// if receiver is not "none": check if receiver exists!
+			if(!checkEmployeeExists($receiver, $pdo))
 			{
-				$sql = "SELECT * FROM employees WHERE employees = ?";
-				$personInfoSql = $pdo->prepare($sql);
-				$personInfoSql->execute([$receiver]);
-				if(!($personInfoSql->rowCount()>0))
+				sendMessage($client, "The specified receiver $receiver does not exist. If you want to send a receipt, please specify \"none\"");
+				return;
+			}
+			else
+			{
+				$inserted = insertTransaction($buyer, $date, $cost, $receiver, $pdo);
+				if($inserted != true)
 				{
-					sendMessage($client, "Could not find the receiver \"$receiver\" in employees.");
+					sendMessage($client, "$inserted");
 					return;
 				}
-			}	
-			catch(PDOException $except)
-			{
-				sendMessage($client, "ERROR: $except");
-			}
-			/* Try To Push Balance From Buyer To Receiver */
-			try
-			{
-				// + for receiver
-				$sql = "UPDATE employees SET balance = balance + ? WHERE employees = ?";
-				$newBalanceSql = $pdo->prepare($sql);
-				$newBalanceSql->execute([$cost, $receiver]);
-				// - for buyer
-				$sql = "UPDATE employees SET balance = balance - ? WHERE employees = ?";
-				$newBalanceSql = $pdo->prepare($sql);
-				$newBalanceSql->execute([$cost, $buyer]);
-				// lastly add new entry to table purchases
-				$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
-				$insertSql = $pdo->prepare($sql);
-				$insertSql->execute([$buyer, $date, $cost, $receiver]);
 				sendMessage($client, "$buyer has sent $cost to $receiver");
-			}	
-			catch(PDOException $except)
-			{
-				sendMessage($client, "ERROR: $except");
 			}
 		}
 	}
 	else if($msg === "remove purchase\n")
 	{
-		//do things
+		echo "The message was recognised as \"remove purchase\"\n";
+		sendMessage($client, "ack");
+		$buyer = receiveMessage($client);	
+		$date = receiveMessage($client);
+		$receiver = receiveMessage($client);
+		removeNewLine($buyer); removeNewLine($date); removeNewLine($receiver);
+
+		/* Verify The Date */
+		if($date != $today)
+		{
+			sendMessage($client, "It is only allowed to remove transactions from the current day");
+		}
+
+		/* Check If Buyer Exists */
+		if(!checkEmployeeExists($buyer,$pdo))
+		{
+			sendMessage($client, "Could not find name \"$buyer\" in employees.");
+			return;
+		}
+
+		if($receiver == "none")
+		{
+			$deleted = deletePurchases($buyer, $date, $pdo);
+			// $inserted can either be "true" or contains the error message
+			if($deleted === true)
+			{
+				sendMessage($client, "Removed all purchases from $buyer at $date");
+			}
+			else
+			{
+				sendMessage($client, $deleted);
+				return;
+			}
+		}
+		else
+		{
+			// if receiver is not "none": check if receiver exists!
+			if(!checkEmployeeExists($receiver, $pdo))
+			{
+				sendMessage($client, "The specified receiver $receiver does not exist. If you want to delete a receipt, please specify \"none\"");
+				return;
+			}
+			else
+			{
+				$deleted = deleteTransactions($buyer, $date, $receiver, $pdo);
+				if($deleted != true)
+				{
+					sendMessage($client, "$deleted");
+					return;
+				}
+				sendMessage($client, "Deleted all transactions from $buyer to $receiver at $date");
+			}
+		}
+		
+		
 	}
 	else if($msg === "send consumer\n")
 	{

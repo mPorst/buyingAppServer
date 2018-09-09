@@ -15,11 +15,14 @@
 / Understand that you have to MANUALLY create the db before executing this script !
 ===============================*/
 
+/*** FUNCTIONS FOR SETTING UP THE MYSQL DATABASE ***/
+
 /* Functions Added for Modularity and Readability */
 function removeNewline(&$inputString ) {
 	$inputString = strtok($inputString, "\n");
 }
 
+/* Set Up The Pdo Object */
 function pdoDbSetup($account, $host, $password, $db) {
 	/* Required Variables */
 	$tables = array("purchases", "consumers", "employees", "summary");
@@ -106,7 +109,7 @@ function updateEmployees($pdo, $employees, $active, $debts) {
 }
 */
 
-/* The "Main" Function: */
+/* The Initialisation Function: */
 
 function init_mysqlServer() {
 	$configFileName = "mysql.conf";
@@ -114,7 +117,7 @@ function init_mysqlServer() {
 
 	/* Read the Config File for Mysql Table Config */
 	$configFile = fopen($configFileName, "r") or die("Could not open $configFileName. Does it exist and can this script read it ?");
-	// The script assumes that there are 3 lines present in exactly this order: username \n servername \n password \n dbName
+	// The script assumes that there are 4 lines present in exactly this order: username \n servername \n password \n dbName
 	// Caution as no error checking is performed here.
 	$user = fgets($configFile);
 	$server = fgets($configFile);
@@ -160,4 +163,151 @@ function init_mysqlServer() {
 	updateEmployees($pdo, $employees, $active, $debts);
 	return $pdo;
 }
+
+/*** FUNCTIONS FOR ACCESSING THE MYSQL TABLE ***/
+
+function checkEmployeeExists($employee, $pdo)
+{
+	try
+	{
+		$sql = "SELECT * FROM employees WHERE employees = ?";
+		$personInfoSql = $pdo->prepare($sql);
+		$personInfoSql->execute([$employee]);
+		if(!($personInfoSql->rowCount()>0))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+		
+	} 
+	catch(PDOException $except)
+	{
+		sendMessage($client, "ERROR: $except");
+		return false;
+	}
+}
+
+function checkOverallAmountRequests($maxTransactions, $pdo)
+{
+		$today = date('Y-m-d');
+		$sql = "SELECT COUNT(prices) as count FROM purchases WHERE dates = ?";
+		$countRequestsSql = $pdo->prepare($sql);
+		$countRequestsSql->execute([$today]);
+		$countRequests = $countRequestsSql->fetch();
+		//the following step simply converts a one element array to a float (or whatever type the element is)
+		$countRequests = $countRequests['count'];
+		//$countRequests=$countRequests+1-1;
+		if($countRequests > 6)
+		{
+			return false;
+		}
+		return true;
+}
+
+function checkAmountRequestsByUser($employee, $maxTransactionsPerUser, $pdo)
+{
+	$today = date('Y-m-d');
+	$sql = "SELECT COUNT(prices) as count FROM purchases WHERE dates = ? AND buyers = ?";
+	$countRequestsPerEmpSql = $pdo->prepare($sql);
+	$countRequestsPerEmpSql->execute([$today, $employee]);
+	$countRequestsPerEmp = $countRequestsPerEmpSql->fetch();
+	//the following step simply converts a one element array to a float (or whatever type the element is)
+	$countRequestsPerEmp = $countRequestsPerEmp['count'];
+	echo "Checking amount of user requests... \n";
+	echo "countRequestsPerEmp: $countRequestsPerEmp \n";
+	if($countRequestsPerEmp > 3)
+	{
+		return false;
+	}	
+	return true;
+}
+
+function insertPurchase($buyer, $date, $cost, $pdo)
+{
+	try
+	{
+		$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
+		$insertSql = $pdo->prepare($sql);
+		//print_r($pdo->errorInfo());
+		$insertSql->execute([$buyer, $date, $cost, "none"]);
+		return true;
+	}
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		// return sth like "only positive numbers up to 9999.99 allowed", keep for debug purposes
+		return $except;
+	}
+}
+
+function insertTransaction($buyer, $date, $cost, $receiver, $pdo)
+{	
+	try
+	{
+		// + for receiver
+		$sql = "UPDATE employees SET balance = balance + ? WHERE employees = ?";
+		$newBalanceSql = $pdo->prepare($sql);
+		$newBalanceSql->execute([$cost, $receiver]);
+		// - for buyer
+		$sql = "UPDATE employees SET balance = balance - ? WHERE employees = ?";
+		$newBalanceSql = $pdo->prepare($sql);
+		$newBalanceSql->execute([$cost, $buyer]);
+		// lastly add new entry to table purchases
+		$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
+		$insertSql = $pdo->prepare($sql);
+		$insertSql->execute([$buyer, $date, $cost, $receiver]);
+		return true;
+	}	
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		return $except;
+	}
+}
+			
+function deletePurchases($buyer, $date, $pdo)
+{
+	try
+	{
+		$sql = "DELETE FROM purchases WHERE buyers = ? AND dates = ? AND receivers = ?";
+		$deleteSql = $pdo->prepare($sql);
+		$deleteSql->execute([$buyer, $date, "none"]);
+		if($deleteSql->rowCount() === 0)
+		{
+			return "There were no purchases to be deleted";
+		}
+		return true;
+	}
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		// return sth like "only positive numbers up to 9999.99 allowed", keep for debug purposes
+		return $except;
+	}
+}
+
+function deleteTransactions($buyer, $date, $receiver, $pdo)
+{
+	try
+	{
+		$sql = "DELETE FROM purchases WHERE buyers = ? AND dates = ? AND receivers = ?";
+		$deleteSql = $pdo->prepare($sql);
+		$deleteSql->execute([$buyer, $date, $receiver]);
+		if($deleteSql->rowCount() === 0)
+		{
+			return "There were no transactions to be deleted";
+		}
+		return true;
+	}
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		// return sth like "only positive numbers up to 9999.99 allowed", keep for debug purposes
+		return $except;
+	}
+}
+
 ?>
