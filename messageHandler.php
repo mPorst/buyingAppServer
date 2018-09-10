@@ -155,7 +155,34 @@ function handleMessage($msg, $client, $pdo)
 	}
 	else if($msg === "get summary\n")
 	{
-		//do things
+		echo "The message was recognised as \"get summary\"\n";
+		sendMessage($client, "ack");
+		$summary = getSummary($pdo);
+		echo "DEBUG: get summary was ok... \n length of array:".sizeof($summary)."\n";
+		for($i = 0; $i<12; $i++)
+		{
+			usleep(30000);
+			$year = $summary[$i]['years'];
+			$month = $summary[$i]['months'];
+			sendMessage($client, date('F, Y', strtotime(date("$year-$month")))." - cost: ".$summary[$i]['cost']." cost per meal: ".$summary[$i]['costPerMeal'] );
+		}
+	}
+	else if($msg === "get balance\n")
+	{
+		echo "The message was recognised as \"get balance\"\n";
+		sendMessage($client, "ack");
+		$buyer = receiveMessage($client);	
+		removeNewLine($buyer);
+		if(!checkEmployeeExists($buyer, $pdo))
+		{
+			sendMessage($client, "Could not find $buyer in employees list");
+			return;
+		}
+		sendMessage($client, getBalance($buyer, $pdo));
+	}
+	else
+	{
+		sendMessage($client, "Sorry, I did not understand your query");	
 	}
 }
 

@@ -310,4 +310,73 @@ function deleteTransactions($buyer, $date, $receiver, $pdo)
 	}
 }
 
+function getBalance($buyer, $pdo)
+{
+	try
+	{
+		$sql = "SELECT * FROM employees WHERE employees = ?";
+		$selectSql = $pdo->prepare($sql);
+		$selectSql->execute([$buyer]);
+		if($selectSql->rowCount() === 0)
+		{
+			return "Something went wrong, could not find a line in employees with name $buyer";
+		}
+		$select = $selectSql->fetch();
+		return "$buyer has currently a balance of ".$select['balance']." euros.";
+	}
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		return $except;
+	}
+}
+
+function getSummary($pdo)
+{
+	try
+	{
+		echo "in sql getSummary function try block\n";
+		$summaryArray = array();
+		//$summary = [];
+		$thisYear = date('Y');
+		$thisMonth = date('m');
+		$year = $thisYear;
+		$month = $thisMonth;
+		for($i=1; $i<13; $i++)
+		{
+			echo "in sql getSummary function try block in loop: $i\n";
+			$month = $month-1;
+			if($month == 0) {
+				echo "DEBUG INSIDE IF\n";
+				$month = 12/*+$i+1*/;
+				//$thisMonth = 12+$i;
+				//$thisYear = $thisYear-1;
+				$year = $year-1;
+			}
+			echo "month:  $month and year: $year\n";
+			$summarySql = $pdo->query("SELECT * FROM summary WHERE years = $year AND months = $month");
+			$summary = $summarySql->fetch();
+			//$summary[] = $summarySql;
+			echo "Instantly before array_push: $i\n";
+			try
+			{
+				array_push($summaryArray, $summary);
+			}
+			catch(Exception $e)
+			{
+				echo $e->getMessage();
+			}
+			
+		}
+		echo "before fetch in getSummary sql \n";
+		echo "after fetch in getSummary sql \n";
+		return $summaryArray;
+	}
+	catch(PDOException $except)
+	{
+		$except->getMessage();
+		return $except;
+	}
+}
+
 ?>

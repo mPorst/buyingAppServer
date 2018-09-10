@@ -68,7 +68,7 @@ function receiveMessage($client){
 }
 
 function sendMessage($client, $message){
-	if( ! socket_send ( $client , $message , strlen($message) , 0))
+	if( ! socket_send ( $client , $message."\n" , strlen($message)+1 , 0))
 	{
 	    $errorcode = socket_last_error();
 	    $errormsg = socket_strerror($errorcode);
