@@ -185,8 +185,8 @@ function checkEmployeeExists($employee, $pdo)
 	} 
 	catch(PDOException $except)
 	{
-		sendMessage($client, "ERROR: $except");
-		return false;
+		$except->getMessage();
+		return $except;
 	}
 }
 
@@ -247,6 +247,10 @@ function insertTransaction($buyer, $date, $cost, $receiver, $pdo)
 {	
 	try
 	{
+		// Add new entry to table purchases
+		$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
+		$insertSql = $pdo->prepare($sql);
+		$insertSql->execute([$buyer, $date, $cost, $receiver]);
 		// + for receiver
 		$sql = "UPDATE employees SET balance = balance + ? WHERE employees = ?";
 		$newBalanceSql = $pdo->prepare($sql);
@@ -255,10 +259,6 @@ function insertTransaction($buyer, $date, $cost, $receiver, $pdo)
 		$sql = "UPDATE employees SET balance = balance - ? WHERE employees = ?";
 		$newBalanceSql = $pdo->prepare($sql);
 		$newBalanceSql->execute([$cost, $buyer]);
-		// lastly add new entry to table purchases
-		$sql = "INSERT INTO purchases VALUES (?, ?, ?, ?)";
-		$insertSql = $pdo->prepare($sql);
-		$insertSql->execute([$buyer, $date, $cost, $receiver]);
 		return true;
 	}	
 	catch(PDOException $except)
@@ -347,7 +347,6 @@ function getSummary($pdo)
 			echo "in sql getSummary function try block in loop: $i\n";
 			$month = $month-1;
 			if($month == 0) {
-				echo "DEBUG INSIDE IF\n";
 				$month = 12/*+$i+1*/;
 				//$thisMonth = 12+$i;
 				//$thisYear = $thisYear-1;
@@ -357,7 +356,6 @@ function getSummary($pdo)
 			$summarySql = $pdo->query("SELECT * FROM summary WHERE years = $year AND months = $month");
 			$summary = $summarySql->fetch();
 			//$summary[] = $summarySql;
-			echo "Instantly before array_push: $i\n";
 			try
 			{
 				array_push($summaryArray, $summary);
@@ -368,8 +366,6 @@ function getSummary($pdo)
 			}
 			
 		}
-		echo "before fetch in getSummary sql \n";
-		echo "after fetch in getSummary sql \n";
 		return $summaryArray;
 	}
 	catch(PDOException $except)

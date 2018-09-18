@@ -24,11 +24,27 @@ function handleMessage($msg, $client, $pdo)
 		$cost = receiveMessage($client);
 		$receiver = receiveMessage($client);
 		removeNewLine($buyer); removeNewLine($cost); removeNewLine($date); removeNewLine($receiver);
+		$cost = str_replace(",", ".", $cost);
+
+		$isNumeric = is_numeric($cost);
+		if(!$isNumeric)
+		{
+			sendMessage($client, "Please only send numbers");
+			return;
+		}
+
+		$formattedCost = number_format($cost, 2, ".","");
+		if($formattedCost != $cost)
+		{
+			sendMessage ($client, "Please only use prices with 2 digits after decimal point");
+			return;
+		}
 
 		/* Verify the sent date */
 		if($date != $today)
 		{
 			sendMessage($client, "It is only allowed to send transactions from the current day");
+			return;
 		}
 
 		/* Check If Buyer Exists */
@@ -61,11 +77,8 @@ function handleMessage($msg, $client, $pdo)
 			{
 				sendMessage($client, "$buyer has paid $cost. inserted: $inserted");
 			}
-			else
-			{
-				sendMessage($client, $inserted);
-				return;
-			}
+			sendMessage($client, $inserted);
+			return;
 		}
 		else
 		{
@@ -78,12 +91,13 @@ function handleMessage($msg, $client, $pdo)
 			else
 			{
 				$inserted = insertTransaction($buyer, $date, $cost, $receiver, $pdo);
-				if($inserted != true)
+				if($inserted === true)
 				{
-					sendMessage($client, "$inserted");
+					sendMessage($client, "$buyer has sent $cost to $receiver");
 					return;
 				}
-				sendMessage($client, "$buyer has sent $cost to $receiver");
+				sendMessage($client, "$inserted");
+				return;
 			}
 		}
 	}
