@@ -161,11 +161,59 @@ function handleMessage($msg, $client, $pdo)
 	}
 	else if($msg === "send consumer\n")
 	{
-		//do things
+		echo "The message was recognised as \"send consumer\"\n";
+		sendMessage($client, "ack");
+		$consumer = receiveMessage($client);
+		$date = receiveMessage($client);
+		$hasEaten = receiveMessage($client);
+		removeNewLine($consumer);removeNewLine($date);removeNewLine($hasEaten);
+		if(!checkEmployeeExists($consumer, $pdo))
+		{
+			sendMessage($client, "$consumer does not exist in employees");
+			return;
+		}
+		if($date != $today)
+		{
+			sendMessage($client, "Please only send queries for this day. You sent: $date. Today is: $today");
+			return;
+		}
+		if(!($hasEaten == "true" or $hasEaten == "false"))
+		{
+			sendMessage($client, "Either send \"true\" or \"false\" in this query, you sent $hasEaten");
+			return;
+		}
+		
+		$insertedConsumer = insertConsumer($consumer, $date, $hasEaten, $pdo);
+		if($insertedConsumer !== true)
+		{
+			sendMessage($client, $insertedConsumer);
+			return;
+		}	
+		else
+		{
+			sendMessage($client, "$consumer has eaten today, $date : $hasEaten");
+		}
+			
 	}
-	else if($msg === "remove consumer\n")
+	else if($msg === "get consumer\n")
 	{
-		//do things
+		echo "The message was recognised as \"get consumer\"\n";
+		sendMessage($client, "ack");
+		$consumer = receiveMessage($client);
+		$date = receiveMessage($client);
+		removeNewLine($consumer);removeNewLine($date);
+		if(!checkEmployeeExists($consumer, $pdo))
+		{
+			sendMessage($client, "$consumer does not exist in employees");
+			return;
+		}
+		if($date != $today)
+		{
+			sendMessage($client, "Please only send queries for this day. You sent: $date. Today is: $today");
+			return;
+		}
+		$consumerEaten = hasConsumerEaten($consumer, $date, $pdo);
+		sendMessage($client, $consumerEaten);
 	}
 	else if($msg === "get summary\n")
 	{

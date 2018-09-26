@@ -335,7 +335,6 @@ function getSummary($pdo)
 {
 	try
 	{
-		echo "in sql getSummary function try block\n";
 		$summaryArray = array();
 		//$summary = [];
 		$thisYear = date('Y');
@@ -344,7 +343,6 @@ function getSummary($pdo)
 		$month = $thisMonth;
 		for($i=1; $i<13; $i++)
 		{
-			echo "in sql getSummary function try block in loop: $i\n";
 			$month = $month-1;
 			if($month == 0) {
 				$month = 12/*+$i+1*/;
@@ -373,6 +371,87 @@ function getSummary($pdo)
 		$except->getMessage();
 		return $except;
 	}
+}
+
+function insertConsumer($consumer, $date, $hasEaten, $pdo)
+{
+	try
+	{
+		$sql = "SELECT COUNT(consumers) as consumerCount FROM consumers WHERE consumers = ? AND date = ?";
+		$consumerEntrySql = $pdo->prepare($sql);
+		$consumerEntrySql->execute([$consumer, $date]);
+		$consumerEntry = $consumerEntrySql->fetch();
+		$consumerEntry = $consumerEntry['consumerCount'];
+		if($consumerEntry == 1)
+		{
+			$sql = "SELECT hasEaten FROM consumers WHERE consumers = ? AND date = ?";	
+			$consumerHasEatenSql = $pdo->prepare($sql);
+			$consumerHasEatenSql->execute([$consumer, $date]);
+			$consumerHasEaten= $consumerHasEatenSql->fetch();
+			$consumerHasEaten = $consumerHasEaten['hasEaten'];
+			if($consumerHasEaten != $hasEaten) // update table
+			{
+				$sql = "UPDATE consumers SET hasEaten = ? WHERE consumers = ? AND date = ?";
+				$updateSql = $pdo->prepare($sql);
+				$updateSql->execute([$hasEaten, $consumer, $date]);
+				return true;
+			}
+			else
+			{
+				return "Nothing to update";
+			}
+		}
+		else if($consumerEntry == 0)
+		{
+			$sql = "INSERT INTO consumers VALUES(?, ?, ?)";	
+			$consumerHasEatenSql = $pdo->prepare($sql);
+			$consumerHasEatenSql->execute([$consumer, $date, $hasEaten]);
+			return true;
+		}
+		else
+		{
+			return "Please contact your admin, there are too many entries for you in the consumers table: $consumerEntry for today";
+		}
+	}
+	catch (PDOException $e)
+	{
+		$e->getMessage();
+		return $e;
+	}
+}
+
+function hasConsumerEaten($consumer, $date, $pdo)
+{
+	try
+	{
+		$sql = "SELECT COUNT(consumers) as consumerCount FROM consumers WHERE consumers = ? AND date = ?";
+		$consumerEntrySql = $pdo->prepare($sql);
+		$consumerEntrySql->execute([$consumer, $date]);
+		$consumerEntry = $consumerEntrySql->fetch();
+		$consumerEntry = $consumerEntry['consumerCount'];
+		echo "consumer entry: $consumerEntry \n";
+		if($consumerEntry == 1)
+		{
+			echo "Entering sql selection... \n";
+			$sql = "SELECT hasEaten FROM consumers WHERE consumers = ? AND date = ?";	
+			$consumerHasEatenSql = $pdo->prepare($sql);
+			$consumerHasEatenSql->execute([$consumer, $date]);
+			$consumerHasEaten= $consumerHasEatenSql->fetch();
+			$consumerHasEaten = $consumerHasEaten['hasEaten'];
+			return $consumerHasEaten; // either false or true
+		}
+		else if($consumerEntry == 0)
+		{
+			echo "Now returning false... \n";
+			return "false";
+		}
+	}
+	catch(PDOException $e)
+	{
+		$e->getMessage();
+		return $e;
+	}
+	return "false";
 }
 
 ?>
