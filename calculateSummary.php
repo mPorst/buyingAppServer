@@ -1,7 +1,9 @@
 #!/usr/bin/php
 
 <?php
-/* Set Up Mandatory DB Connection */
+
+chdir(dirname(__FILE__));
+
 function removeNewLine(&$inputString) {
 	$inputString = strtok($inputString, "\n");
 }
@@ -158,11 +160,10 @@ function getProperYear($lastMonth){
 	}
 	return $year;
 }
-
-
+$curDir = getcwd();
 
 $configFileName = "mysql.conf";
-$configFile=fopen($configFileName, 'r');
+$configFile=fopen($curDir."/".$configFileName, 'r');
 
 $user = fgets($configFile);
 $server = fgets($configFile);
@@ -180,7 +181,7 @@ $lastMonth = getLastMonth();
 $year = getProperYear($lastMonth);
 echo "last month was $lastMonth and thus the proper year is $year \n";
 
-
+/* Set Up Mandatory DB Connection */
 $dsn = "mysql:host=$server;dbname=$dbName";
 try{
 	$pdo = new PDO($dsn, $user, $password);
@@ -195,7 +196,8 @@ catch (PDOException $e){
 // exception are employee names, example: O'Hara
 
 //get all employees
-$emps = $pdo->query("SELECT * FROM employees");
+$empsSql = $pdo->query("SELECT * FROM employees");
+$emps = $empsSql->fetchAll();
 
 //backup current entries
 //also create a log file
@@ -224,11 +226,13 @@ $eatenCount = $eatenCount['countEaten'];
 $pricePerMeal = $fullPrice/$eatenCount;
 fwrite($logfile, "It was $eatenCount times eaten this month with a total cost of $fullPrice giving a price per meal of $pricePerMeal \n\n");
 
+echo "laliel \n";
 // collect what all employees have paid
 foreach($emps as $emp)
 {	
 	// backup immediately so if anything goes wrong the old values can be restored
 	fwrite($fp, $emp['employees']." - ".$emp['active']." - ".$emp['balance']."\n");
+	echo $emp['employees']." - ".$emp['active']." - ".$emp['balance']."\n";
 	
 	$currentEmp = $emp['employees'];
 
@@ -252,6 +256,7 @@ foreach($emps as $emp)
 
 	// calculate the new balance
 	$newBalance = $balance + $balanceChangePerEmp - ($hasEatenCount*$pricePerMeal);
+	echo "Now inserting $newBalance for $currentEmp\n";
 
 	// insert new balance into table
 	$sql = "UPDATE employees SET balance = ? WHERE employees = ?";
