@@ -60,7 +60,8 @@ function receiveMessage($client){
 
 	if(false === ($msg = socket_read($client, 2048, PHP_NORMAL_READ)))
 	{
-		die("error when reading \n");
+		echo "error when reading \n";
+		return "readingError";
 	}
 	echo "received a message: ";
 	echo "$msg \n";

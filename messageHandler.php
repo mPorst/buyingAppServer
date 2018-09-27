@@ -23,6 +23,11 @@ function handleMessage($msg, $client, $pdo)
 		$date = receiveMessage($client);
 		$cost = receiveMessage($client);
 		$receiver = receiveMessage($client);
+		if($buyer == "readingError" or $date == "readingError" or $cost == "readingError" or $receiver == "readingError")
+		{
+			sendMessage($client, "There was an error while transmitting your data");
+			return;
+		}
 		removeNewLine($buyer); removeNewLine($cost); removeNewLine($date); removeNewLine($receiver);
 		$cost = str_replace(",", ".", $cost);
 
@@ -223,7 +228,7 @@ function handleMessage($msg, $client, $pdo)
 		echo "DEBUG: get summary was ok... \n length of array:".sizeof($summary)."\n";
 		for($i = 0; $i<12; $i++)
 		{
-			usleep(30000);
+			usleep(50000);
 			$year = $summary[$i]['years'];
 			$month = $summary[$i]['months'];
 			sendMessage($client, date('F, Y', strtotime(date("$year-$month")))." - cost: ".$summary[$i]['cost']." cost per meal: ".$summary[$i]['costPerMeal'] );
