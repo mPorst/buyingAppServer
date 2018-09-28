@@ -1,6 +1,7 @@
-crontab -l > file;
+#!/bin/bash
+
 if ! crontab -l | grep '5 0 1 * * /home/serenity/web/einkaufApp/calculateSummary.php'; then
-	(crontab -l 2>/home/serenity/web/einkaufApp/calculateSummary.err; echo "5 0 1 * * /home/serenity/web/einkaufApp/calculateSummary.php &>/home/serenity/web/einkaufApp/calculateSummaryCron.log" >> cronFile.bk);
+	(crontab -l 2>/home/serenity/web/einkaufApp/calculateSummary.err; echo '5 0 1 * * /home/serenity/web/einkaufApp/calculateSummary.php' >> cronFile.bk);
 	crontab cronFile.bk;
 else
 	echo "cronjob already exists";

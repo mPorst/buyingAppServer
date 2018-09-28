@@ -1,6 +1,7 @@
 <?php
 
 function init_socket($strIPorDOMAIN, $host, $port){
+	
 
 	if($strIPorDOMAIN === "IP")
 	{
@@ -51,6 +52,9 @@ function acceptClient($sock){
 
 function receiveMessage($client){
 	     
+	// set timeout of 3 seconds for client socket
+	socket_set_option($client,SOL_SOCKET, SO_RCVTIMEO, array("sec"=>3, "usec"=>0));
+
 	//display information about the client who is connected
 	if(socket_getpeername($client , $address , $port))
 	{

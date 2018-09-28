@@ -10,10 +10,68 @@
 //functions to outsource:
 //checkEmployeeExists($employee, $pdo)
 //check
-function handleMessage($msg, $client, $pdo)
+
+function checkDateValid($client, $onlyCurrentDay, $date)
 {
+	$temp1 = array();
 	$today = date('Y-m-d');
+	$temp1 = explode("-", $today);
+	$yearToday = $temp1[0];
+	$monthToday = $temp1[1];
+	$dayToday = $temp1[2];
+
+	$temp2 = array();
+	$temp2 = explode("-", $date);
+
+	// check for 3 elements within $temp
+	if(sizeof($temp2) != 3)
+	{
+		sendMessage($client, "Please use the following date format: YYYY-MM-DD. You sent $date");
+		return false;
+	}
+
+	$yearSent = $temp2[0];
+	$monthSent = $temp2[1];
+	$daySent = $temp2[2];
+	if(!checkdate($monthSent, $daySent, $yearSent))
+	{
+		sendMessage($client, "Please use the following date format: YYYY-MM-DD. You sent $date");
+		return false;
+	}
+
+	// check for onlyCurrentDay
+	if($date != $today && $onlyCurrentDay == "true")
+	{
+		sendMessage($client, "Please only send queries for this day. You sent: $date. Today is: $today");
+		return false;
+	}
+
+	
+	if($yearSent != $yearToday || $monthSent != $monthToday)
+	{
+		sendMessage($client, "Please only send queries for the current month. you sent $date. Today is: $today");
+		return false;
+	}
+
+	if(intval($daySent) > intval($dayToday))
+	{
+		sendMessage($client, "You sent a date in the future: $date. Today is $today");
+		return false;
+	}
+
+	return true;
+}
+
+function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
+{
+	if($blockAllTraffic == "true")
+	{
+		sendMessage($client, "Server is configured to block all traffic");
+		return;
+	}
+	
 	$msgTypes = array("send purchase", "remove purchase", "send consumer", "remove consumer");
+
 	
 	if($msg === "send purchase\n")
 	{
@@ -46,9 +104,8 @@ function handleMessage($msg, $client, $pdo)
 		}
 
 		/* Verify the sent date */
-		if($date != $today)
+		if(!checkDateValid($client, $onlyCurrentDay, $date))
 		{
-			sendMessage($client, "It is only allowed to send transactions from the current day");
 			return;
 		}
 
@@ -116,11 +173,10 @@ function handleMessage($msg, $client, $pdo)
 		removeNewLine($buyer); removeNewLine($date); removeNewLine($receiver);
 
 		/* Verify The Date */
-		if($date != $today)
+		if(!checkDateValid($client, $onlyCurrentDay, $date))
 		{
-			sendMessage($client, "It is only allowed to remove transactions from the current day");
+			return;
 		}
-
 		/* Check If Buyer Exists */
 		if(!checkEmployeeExists($buyer,$pdo))
 		{
@@ -177,9 +233,8 @@ function handleMessage($msg, $client, $pdo)
 			sendMessage($client, "$consumer does not exist in employees");
 			return;
 		}
-		if($date != $today)
+		if(!checkDateValid($client, $onlyCurrentDay, $date))
 		{
-			sendMessage($client, "Please only send queries for this day. You sent: $date. Today is: $today");
 			return;
 		}
 		if(!($hasEaten == "true" or $hasEaten == "false"))
@@ -212,9 +267,8 @@ function handleMessage($msg, $client, $pdo)
 			sendMessage($client, "$consumer does not exist in employees");
 			return;
 		}
-		if($date != $today)
+		if(!checkDateValid($client, $onlyCurrentDay, $date))
 		{
-			sendMessage($client, "Please only send queries for this day. You sent: $date. Today is: $today");
 			return;
 		}
 		$consumerEaten = hasConsumerEaten($consumer, $date, $pdo);
