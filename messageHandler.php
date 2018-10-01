@@ -1,15 +1,11 @@
 <?php
 /*================================
 / The message handler is supposed to handle all types of messages that can be sent:
-/ "send purchase", "remove purchase", "send consumer", "remove consumer"
+/ "send purchase", "remove purchase", "send consumer", "remove consumer", "get summary", "get balance"
 / it also handles database interaction, thus it requires the $pdo object
 ================================*/
 #include_once "socketHandling.php"
 #include_once "mysqlBackend.php"
-
-//functions to outsource:
-//checkEmployeeExists($employee, $pdo)
-//check
 
 function checkDateValid($client, $onlyCurrentDay, $date)
 {
@@ -61,6 +57,21 @@ function checkDateValid($client, $onlyCurrentDay, $date)
 
 	return true;
 }
+
+//This function is supposed to be called only AFTER checkDateValid as it does no verify the date
+function checkDateToday($date)
+{	
+	$today = date('Y-m-d');
+	if($today == $date)
+	{
+		return true;
+	}	
+	else
+	{
+		return false;
+	}
+}
+
 
 function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 {
@@ -130,14 +141,24 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			return;
 		}
 
-		/* Check Receiver Field to choose proper method to cal */
+		/* Check Receiver Field to choose proper method to call */
 		if($receiver == "none")
 		{
 			$inserted = insertPurchase($buyer, $date, $cost, $pdo);
 			// $inserted can either be "true" or contains the error message
 			if($inserted === true)
 			{
-				sendMessage($client, "$buyer has paid $cost. inserted: $inserted");
+				sendMessage($client, "$buyer has paid $cost on $date.");
+				// log the message if the send date was not today
+				if(!checkDateToday($date))
+				{
+					$today = date("Y-m-d");
+					mkdir("log");
+					mkdir("sentForDifferentDay");
+					$fp = fopen("log/sentForDifferentDay/$today.log", 'w');
+					fwrite("$buyer has paid $cost on $date.");
+					fclose($fp);
+				}
 			}
 			sendMessage($client, $inserted);
 			return;
@@ -152,14 +173,22 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			}
 			else
 			{
-				$inserted = insertTransaction($buyer, $date, $cost, $receiver, $pdo);
-				if($inserted === true)
+				$today = date('Y-m-d');
+				if($date != $today)
 				{
-					sendMessage($client, "$buyer has sent $cost to $receiver");
+					sendMessage($client, "Please send transactions only for the current date");
+				}
+				else
+				{
+					$inserted = insertTransaction($buyer, $date, $cost, $receiver, $pdo);
+					if($inserted === true)
+					{
+						sendMessage($client, "$buyer has sent $cost to $receiver");
+						return;
+					}
+					sendMessage($client, "$inserted");
 					return;
 				}
-				sendMessage($client, "$inserted");
-				return;
 			}
 		}
 	}
@@ -190,7 +219,17 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			// $inserted can either be "true" or contains the error message
 			if($deleted === true)
 			{
-				sendMessage($client, "Removed all purchases from $buyer at $date");
+				if(!checkDateToday($date))
+				{
+					$fp = fopen("log/sentForDifferentDay/$today.log", 'w');
+					fwrite($fp, "Removed all purchases from $buyer at $date. This deletion requests was logged because it was not for today");
+					fclose($fp);
+					sendMessageClient($client, "Removed all purchases from $buyer at $date. This deletion requests was logged because it was not for today");
+				}
+				else
+				{
+					sendMessage($client, "Removed all purchases from $buyer at $date");
+				}
 			}
 			else
 			{
@@ -208,13 +247,20 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			}
 			else
 			{
-				$deleted = deleteTransactions($buyer, $date, $receiver, $pdo);
-				if($deleted != true)
+				if(!checkDateToday($date))
 				{
-					sendMessage($client, "$deleted");
-					return;
+					sendMessage($client, "Please only send deletion requests for transactions from the same day. If you want to delete a receipt, please specify \"none\" for receiver");
 				}
-				sendMessage($client, "Deleted all transactions from $buyer to $receiver at $date");
+				else
+				{
+					$deleted = deleteTransactions($buyer, $date, $receiver, $pdo);
+					if($deleted != true)
+					{
+						sendMessage($client, "$deleted");
+						return;
+					}
+					sendMessage($client, "Deleted all transactions from $buyer to $receiver at $date");
+				}
 			}
 		}
 		
@@ -300,6 +346,19 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			return;
 		}
 		sendMessage($client, getBalance($buyer, $pdo));
+	}
+	else if($msg === "get eaters\n")
+	{
+		echo "The message was recognised as \"get balance\"\n";
+		sendMessage($client, "ack");
+		$date = receiveMessage($client);
+		$eatenToday = haveEatenToday($today, $pdo);
+		foreach($eatenToday as $consumer)
+		{
+			sendMessage($client, $consumer);
+			return;
+		}
+		return;
 	}
 	else
 	{

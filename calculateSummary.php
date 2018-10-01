@@ -179,7 +179,7 @@ fclose($configFile);
 	
 $lastMonth = getLastMonth();
 $year = getProperYear($lastMonth);
-echo "last month was $lastMonth and thus the proper year is $year \n";
+//echo "last month was $lastMonth and thus the proper year is $year \n";
 
 /* Set Up Mandatory DB Connection */
 $dsn = "mysql:host=$server;dbname=$dbName";
@@ -193,7 +193,6 @@ catch (PDOException $e){
 
 /* First Get All Employees */
 // again no prepared statements required as only SQL columns are read and php dates are used.
-// exception are employee names, example: O'Hara
 
 //get all employees
 $empsSql = $pdo->query("SELECT * FROM employees");
@@ -226,8 +225,10 @@ $eatenCount = $eatenCount['countEaten'];
 $pricePerMeal = $fullPrice/$eatenCount;
 fwrite($logfile, "It was $eatenCount times eaten this month with a total cost of $fullPrice giving a price per meal of $pricePerMeal \n\n");
 
-echo "laliel \n";
+setSummary($year, $lastMonth, $fullPrice, $pricePerMeal);
+
 // collect what all employees have paid
+
 foreach($emps as $emp)
 {	
 	// backup immediately so if anything goes wrong the old values can be restored

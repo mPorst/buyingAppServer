@@ -373,6 +373,11 @@ function getSummary($pdo)
 	}
 }
 
+function setSummary($year, $month, $price, $pricePerMeal, $pdo)
+{
+	$pdo->query("INSERT INTO summary VALUES($year, $month, $price, $pricePerMeal);
+}
+
 function insertConsumer($consumer, $date, $hasEaten, $pdo)
 {
 	try
@@ -453,5 +458,26 @@ function hasConsumerEaten($consumer, $date, $pdo)
 	}
 	return "false";
 }
+
+function haveEatenToday($date, $pdo)
+{
+	try
+	{
+		$sql = "SELECT consumers from consumers WHERE date = ? and hasEaten = ?";
+		$eatenTodaySql = $pdo->prepare($sql, 'true');
+		$eatenTodaySql->execute([$date]);
+		$eatenToday = $eatenTodaySql->fetch();
+		$eatenToday = $eatenToday['consumers'];
+		return $eatenToday;
+	}
+	catch(PDOException $e)
+	{
+		$e->getMessage();
+		return $e;
+	}
+	return "internal server error in mysqlBackend/haveEatenToday";
+}	
+
+function 
 
 ?>
