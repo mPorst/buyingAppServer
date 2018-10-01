@@ -341,7 +341,13 @@ function getSummary($pdo)
 		$thisMonth = date('m');
 		$year = $thisYear;
 		$month = $thisMonth;
-		for($i=1; $i<13; $i++)
+		$entriesSql = $pdo->query("SELECT COUNT(months) as entries from summary");
+		$entries = $entriesSql->fetch();
+		$entries = $entries['entries'];
+		// send back a maximum of 12 months
+		if($entries > 12)
+			$entries = 12;
+		for($i=1; $i<$entries+1; $i++)
 		{
 			$month = $month-1;
 			if($month == 0) {
@@ -375,7 +381,8 @@ function getSummary($pdo)
 
 function setSummary($year, $month, $price, $pricePerMeal, $pdo)
 {
-	$pdo->query("INSERT INTO summary VALUES($year, $month, $price, $pricePerMeal);
+	$pdo->query("INSERT INTO summary VALUES($year, $month, $price, $pricePerMeal)");
+	return;
 }
 
 function insertConsumer($consumer, $date, $hasEaten, $pdo)
@@ -464,10 +471,11 @@ function haveEatenToday($date, $pdo)
 	try
 	{
 		$sql = "SELECT consumers from consumers WHERE date = ? and hasEaten = ?";
-		$eatenTodaySql = $pdo->prepare($sql, 'true');
-		$eatenTodaySql->execute([$date]);
-		$eatenToday = $eatenTodaySql->fetch();
-		$eatenToday = $eatenToday['consumers'];
+		$eatenTodaySql = $pdo->prepare($sql);
+		$eatenTodaySql->execute([$date, 'true']);
+		$eatenToday = $eatenTodaySql->fetchAll();
+		$eatenToday = $eatenToday;//['consumers'];
+		echo "eaten today: $eatenToday\n";
 		return $eatenToday;
 	}
 	catch(PDOException $e)
@@ -477,7 +485,5 @@ function haveEatenToday($date, $pdo)
 	}
 	return "internal server error in mysqlBackend/haveEatenToday";
 }	
-
-function 
 
 ?>

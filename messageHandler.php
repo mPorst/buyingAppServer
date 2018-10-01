@@ -29,6 +29,7 @@ function checkDateValid($client, $onlyCurrentDay, $date)
 	$yearSent = $temp2[0];
 	$monthSent = $temp2[1];
 	$daySent = $temp2[2];
+	echo "$yearSent - $monthSent - $daySent \n";
 	if(!checkdate($monthSent, $daySent, $yearSent))
 	{
 		sendMessage($client, "Please use the following date format: YYYY-MM-DD. You sent $date");
@@ -326,12 +327,14 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 		sendMessage($client, "ack");
 		$summary = getSummary($pdo);
 		echo "DEBUG: get summary was ok... \n length of array:".sizeof($summary)."\n";
-		for($i = 0; $i<12; $i++)
+		//for($i = 0; $i<12; $i++)
+		foreach($summary as $sum)
 		{
-			usleep(50000);
-			$year = $summary[$i]['years'];
-			$month = $summary[$i]['months'];
-			sendMessage($client, date('F, Y', strtotime(date("$year-$month")))." - cost: ".$summary[$i]['cost']." cost per meal: ".$summary[$i]['costPerMeal'] );
+			usleep(100000);
+			$year = $sum['years'];
+			$month = $sum['months'];
+			echo "$year - $month\n";
+			sendMessage($client, date('F, Y', strtotime(date("$year-$month")))." - cost: ".$sum['cost']." cost per meal: ".$sum['costPerMeal'] );
 		}
 	}
 	else if($msg === "get balance\n")
@@ -349,14 +352,34 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 	}
 	else if($msg === "get eaters\n")
 	{
-		echo "The message was recognised as \"get balance\"\n";
+		echo "The message was recognised as \"get eaters\"\n";
 		sendMessage($client, "ack");
 		$date = receiveMessage($client);
-		$eatenToday = haveEatenToday($today, $pdo);
+		removeNewLine($date);
+		if(!checkDateValid($client, $onlyCurrentDay, $date))
+		{
+			return;
+		}
+		$eatenToday = haveEatenToday($date, $pdo);
+		sendMessage($client, "on $date the following people have eaten: ");
+echo "sizeof $eatenToday: ".sizeof($eatenToday)."\n";
+		if(sizeof($eatenToday) == 0)
+		{
+			usleep(50000);
+			sendMessage($client, "None");
+			return;
+		}
+		if(sizeof($eatenToday) == 1)
+		{
+			usleep(200000);
+			sendMessage($client, $eatenToday['consumers']);
+			return;
+		}
 		foreach($eatenToday as $consumer)
 		{
-			sendMessage($client, $consumer);
-			return;
+			usleep(50000);
+			sendMessage($client, $consumer['consumers']);
+			//return;
 		}
 		return;
 	}

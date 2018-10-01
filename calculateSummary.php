@@ -2,6 +2,8 @@
 
 <?php
 
+#include_once "mysqlBackend.php";
+
 chdir(dirname(__FILE__));
 
 function removeNewLine(&$inputString) {
@@ -211,21 +213,23 @@ $fp = fopen($bkdir.date("Y-m-d_H:i:s").".bk", 'w');
 $logfile = fopen($logdir.date("Y-m-d_H:i:s").".log", 'w');
 
 //get the full sum of prices
-$pQuery = $pdo->query("SELECT SUM(prices) AS totalsum FROM purchases WHERE MONTH(dates) = 09");
+$pQuery = $pdo->query("SELECT SUM(prices) AS totalsum FROM purchases WHERE MONTH(dates) = $lastMonth");
 $fullPriceSql = $pQuery->fetch();
 $fullPrice = $fullPriceSql['totalsum'];
 
 //get how many people have eaten this month
 $sql = "SELECT COUNT(consumers) AS countEaten FROM consumers WHERE hasEaten = ? AND MONTH(date) = ?";
 $eatenSql = $pdo->prepare($sql);
-$eatenSql->execute(["true", $lastMonth+1]);
+$eatenSql->execute(["true", $lastMonth]);
 $eatenCount = $eatenSql->fetch();
 $eatenCount = $eatenCount['countEaten'];
 
 $pricePerMeal = $fullPrice/$eatenCount;
 fwrite($logfile, "It was $eatenCount times eaten this month with a total cost of $fullPrice giving a price per meal of $pricePerMeal \n\n");
 
-setSummary($year, $lastMonth, $fullPrice, $pricePerMeal);
+//setSummary($year, $lastMonth, $fullPrice, $pricePerMeal, $pdo);
+echo "Now inserting $year, $lastMonth, $fullPrice, $pricePerMeal)";
+$pdo->query("INSERT INTO summary VALUES($lastMonth, $year, $fullPrice, $pricePerMeal)");
 
 // collect what all employees have paid
 
