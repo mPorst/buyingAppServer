@@ -16,7 +16,6 @@ echo "Block All Traffic: $blockAllTraffic\n";
 $onlyCurrentDay = $params[1];
 
 
-$i = 0;
 $pdo = init_mysqlServer();
 $sock = init_socket($strIPorDOMAIN, $host, $port);
 do{

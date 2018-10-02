@@ -156,7 +156,7 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 					$today = date("Y-m-d");
 					mkdir("log");
 					mkdir("sentForDifferentDay");
-					$fp = fopen("log/sentForDifferentDay/$today.log", 'w');
+					$fp = fopen("log/sentForDifferentDay/$today.log", 'a');
 					fwrite("$buyer has paid $cost on $date.");
 					fclose($fp);
 				}
@@ -222,7 +222,7 @@ function handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo)
 			{
 				if(!checkDateToday($date))
 				{
-					$fp = fopen("log/sentForDifferentDay/$today.log", 'w');
+					$fp = fopen("log/sentForDifferentDay/$today.log", 'a');
 					fwrite($fp, "Removed all purchases from $buyer at $date. This deletion requests was logged because it was not for today");
 					fclose($fp);
 					sendMessageClient($client, "Removed all purchases from $buyer at $date. This deletion requests was logged because it was not for today");
