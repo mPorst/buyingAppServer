@@ -372,7 +372,14 @@ echo "sizeof $eatenToday: ".sizeof($eatenToday)."\n";
 		if(sizeof($eatenToday) == 1)
 		{
 			usleep(200000);
-			sendMessage($client, $eatenToday['consumers']);
+			if(is_array($eatenToday))
+			{
+				sendMessage($client, $eatenToday['consumers']);
+			}
+			else
+			{
+				sendMessage($client, $eatenToday);
+			}
 			return;
 		}
 		foreach($eatenToday as $consumer)
