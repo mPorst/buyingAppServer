@@ -15,14 +15,15 @@ $blockAllTraffic = $params[0];
 echo "Block All Traffic: $blockAllTraffic\n";
 $onlyCurrentDay = $params[1];
 
+$initial = true;
 
-$pdo = init_mysqlServer();
 $sock = init_socket($strIPorDOMAIN, $host, $port);
 do{
+	$pdo = init_mysqlServer($initial);
 	$client = acceptClient($sock);
 	$msg = receiveMessage($client);
 	handleMessage($msg, $client, $blockAllTraffic, $onlyCurrentDay, $pdo);
-	//sendMessage($client, "Hey there");
+	$initial = false;
 } while(true);
 
 ?>

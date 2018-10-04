@@ -23,7 +23,7 @@ function removeNewline(&$inputString ) {
 }
 
 /* Set Up The Pdo Object */
-function pdoDbSetup($account, $host, $password, $db) {
+function pdoDbSetup($account, $host, $password, $db, $initial) {
 	/* Required Variables */
 	$tables = array("purchases", "consumers", "employees", "summary");
 	$tableParameters = array("purchases" => "(buyers VARCHAR(255), dates DATE, prices DECIMAL(6,2) UNSIGNED, receivers VARCHAR(255))",
@@ -44,27 +44,30 @@ function pdoDbSetup($account, $host, $password, $db) {
 
 	/* Now Check For The Existing Tables */
 		
-	echo "Checking database \"$db\" for tables:\n \n";
-	foreach ($tables as $singleTable)
+	if($initial == true)
 	{
-		// no prepared statement required as no dynamic elements are contained within these queries!
-		// Also holds true for $singleTable as these values are from a predefined array.
-		try
+		echo "Checking database \"$db\" for tables:\n \n";
+		foreach ($tables as $singleTable)
 		{
-			$pdo->query("SELECT 1 FROM $singleTable LIMIT 1");
-			echo "table \"$singleTable\" exists \n";
-		}
-		catch(PDOException $except)
-		{
-			echo "Creating table $singleTable \n";
-			$created = $pdo->query("CREATE TABLE $singleTable $tableParameters[$singleTable]");
-			if($created === true)
+			// no prepared statement required as no dynamic elements are contained within these queries!
+			// Also holds true for $singleTable as these values are from a predefined array.
+			try
 			{
-				echo "Successfully creted table $singleTable \n";
+				$pdo->query("SELECT 1 FROM $singleTable LIMIT 1");
+				echo "table \"$singleTable\" exists \n";
+			}
+			catch(PDOException $except)
+			{
+				echo "Creating table $singleTable \n";
+				$created = $pdo->query("CREATE TABLE $singleTable $tableParameters[$singleTable]");
+				if($created === true)
+				{
+					echo "Successfully creted table $singleTable \n";
+				}
 			}
 		}
+		echo "\n";
 	}
-	echo "\n";
 	return $pdo;
 }
 
@@ -111,7 +114,7 @@ function updateEmployees($pdo, $employees, $active, $debts) {
 
 /* The Initialisation Function: */
 
-function init_mysqlServer() {
+function init_mysqlServer($initial) {
 	$configFileName = "mysql.conf";
 	$employeeFileName = "employees.conf";
 
@@ -159,7 +162,7 @@ function init_mysqlServer() {
 	fclose($employeeFile);
 	
 	/* Setup Database Connection And Initial Entries Using Previously Read Configs */
-	$pdo = pdoDbSetup($user, $server, $password, $dbName);
+	$pdo = pdoDbSetup($user, $server, $password, $dbName, $initial);
 	updateEmployees($pdo, $employees, $active, $debts);
 	return $pdo;
 }
